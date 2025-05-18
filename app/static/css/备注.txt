@@ -1,0 +1,6 @@
+开发阶段，运行程序的同时，要运行css搅拌机：
+# Windows 示例（在项目根目录运行）
+.\tailwindcss.exe -i ./app/static/css/styles.css -o ./app/static/css/output.css --watch
+
+生产阶段，一次性编译并压缩：
+.\tailwindcss.exe -i ./app/static/css/styles.css -o ./app/static/css/output.css --minify

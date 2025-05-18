@@ -1,0 +1,1 @@
+5.18：dockerfile： Docker 无法从 Docker Hub 下载基础镜像 python:3.11-slim，也试过中科大等国内的，试过FROM python:3.9-slim，3个小时试错，应该是我电脑网络设置问题，放弃。项目后期再测试本地部署，如果不行，就fly.io builder来做。

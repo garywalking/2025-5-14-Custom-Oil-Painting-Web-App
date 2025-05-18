@@ -1,0 +1,374 @@
+# 定制油画 Web APP 项目需求书
+
+## 1. 项目概述
+
+开发一个定制油画的网站，主要面向美国市场，采用美金计价。网站需支持英文界面，全球用户均可访问。长度单位以显示英尺为主，同时显示厘米和米（但我在内部计算的时候，有时会用厘米计算，有时用英尺）。
+
+## 2. 核心功能 - 主页第一部分 (客户交互流程)
+
+### 2.1. 图片上传与智能分析
+* 客户上传图片，支持绝大多数通用格式 (需标注支持格式：.jpg, .jpeg, .png, .webp, .bmp, .heic, .heif)。 
+* 上传时显示动图表示处理中。
+* 图片将通过客户端直接上传到 Cloudinary，后端 FastAPI 负责生成安全的上传凭证。使用 Pillow 处理图片，再上传到 Cloudinary。 需避免 "Upload error: request got values for both 'fields' and 'body', can only specify one" 问题。 
+* 上传后显示缩略图在上传按钮左侧框内，信息在图下方。
+* 右侧框展示原图通过stablity ai转化的1种可选油画风格。
+* 以上的原图和风格图下方有单选题，客户或者选原图，或者选我们in-house生成的风格图。
+* 下方并列小框，也是单选题： 
+    * "Bespoke Oil Painting: A unique, original oil painting created specifically for you by a skilled artist."
+    * "High-Quality Canvas Print (Giclée): A premium reproduction printed directly onto canvas, capturing the visual essence of an oil painting."
+* 如果客户选择"Bespoke Oil Painting": HuggingFace CLIP 智能判断客户上传的“原图”为什么画种并定价：
+    * 人物画及仿名画: $30/平方英尺
+    * 风景画: $25/平方英尺
+    * 抽象画: $20/平方英尺
+* 如果客户选择"High-Quality Canvas Print (Giclée)": 无论是什么画种，都是$10/平方英尺。
+* 512像素的原始生成图因为生成慢，所以在 checkout 按钮下方加载。不加水印。
+* 若 HuggingFace CLIP 或 Stablity.ai 服务调用失败或超时，前端应向用户显示友好的错误提示（如“图片分析/风格生成暂时不可用，请稍后重试”），后端记录详细错误日志。
+
+### 2.2. 画框选择
+* 四种价格画框可选：
+    * $4/英尺 (预拉伸，即挂)
+    * $8/英尺 (预拉伸，即挂)
+    * $12/英尺 (预拉伸，即挂)
+    * $0/英尺 (无画框，卷筒运输) - 默认选项
+* 画框有单边100像素正方形占位图，横向并列供点击。我会在后台上传4个图片在占位图上面。
+* 画框费用 = (2 * 画长 + 2 * 画宽) * 画框单价。
+* 显示 "Frame Price"。
+
+### 2.3. 尺寸、重量与制作时间
+* 客户输入 "Length of Longest Side"，系统计算并显示横竖尺寸。
+* 显示重量 (KG)：
+    * 有框画: 包装厚度固定值12cm * (客户油画宽cm+2cm) * (客户油画长cm+2cm) / 6000
+    * 无框画: 12cm * 12cm * (客户油画最短边cm+2cm) / 6000
+* 显示Bespoke Oil Painting的制作时间：
+    * >= 4平方英尺: "Production Time: 12 days"
+    * < 4平方英尺: "Production Time: 8 days"
+* 显示High-Quality Canvas Print (Giclée)的制作时间：
+    *统一为"Production Time: 3 days"
+
+### 2.4. 国家与运费计算
+* 客户输入/选择 "Country Code" (可输入、可下拉，不分大小写，输入首字母显示匹配国家，国家代号旁显示完整英文名)。 
+* 下拉菜单顺序: 美国、德国、英国、法国优先，其余按常规处理 (如首字母排序)。
+* 默认选择美国。
+* 通过云途物流 API，根据国家和重量计算运费，显示：
+    * 一个最快较贵的选项
+    * 一个THPHR代码的专线服务 (最常用性价比最高)
+* 显示 "Shipping Price"。
+* 若云途物流 API 调用失败，前端显示“运费计算暂时失败，请稍后重试”，后端记录错误。
+
+### 2.5. 费用汇总与操作按钮
+* 在下方网页组块中依次显示：Painting Size, Shipping Weight, Production Time, Painting Type, Painting Price, Frame Price, Shipping Price。
+* 折扣选项: "☑ I agree to showcase my photo and painting on the gallery page, and get 5% discount." (默认勾选, 5% 折扣作用于Painting Price加上Frame Price)。
+* Subtotal
+* 按钮：
+    * "Send My Quote & Preview": 旁边有邮箱输入框 (含灰色示例)。
+* "Checkout"
+
+### 2.6. 布局说明 (主页第一部分)
+* **双列布局:** 左边框 (原图) 和右边框 (预览图) 并排，宽度自适应。
+    * 未上传时，按钮居中在左边框。
+    * 上传后，按钮移到原图下方，与信息并列。
+    * 上传按钮保持可点击，支持重新上传。
+* **左边框 (原图区域):**
+    * 未上传时: 上传按钮 (Upload Image 📸) 居中，大小 160x160px。
+    * 上传后: 原图显示 160x160px (`object-contain` 保持比例)。下方显示比例和画种。 "Change Image 🔄" 按钮与信息并列。
+    * 支持格式: 下方标注 "Supported: JPG, PNG, GIF, BMP, etc."。
+    * 加载动图: 上传时显示 loading.gif。
+* **右边框 (风格预览区域):**
+* 160x160px 风格图 
+* 下方单选框紧凑排列 (Bespoke Oil Painting / Canvas Print)。
+* 最长边和国家代码输入垂直并列安排，不占太多地方。
+* **Checkout 区域:** 
+    * 512px 预览图 (无水印) 在 Checkout 按钮上方，最大宽度自适应 (`max-w-md`)。
+    * 提示 "Long press to save your 512px preview! 📸"。
+    * 按钮和邮箱框并列。
+* **手机优化:** 
+    * 宽度: 双列布局在手机上纵向堆叠 (`flex-col`)，每个框宽度占满屏幕 (`w-full`)。
+    * 高度: 160px 图 + 信息 + 按钮，总高度约 250-300px，单屏可见。
+    * 触摸友好: 按钮约 48px 高 (如 `py-2 px-4`)。
+
+## 3. 核心功能 - Checkout 流程
+
+* **访客登录:** 不设用户账号系统。 
+* **Stripe 集成:** 
+    * 在生成 Checkout Session 时附加自定义 metadata (详细订单信息) 给 Stripe，用于 webhook 返回和强校验。 
+    * 强校验: 客户在 Stripe 页面只能选择之前在本网站页面选择的国家，避免运费作弊。 
+    * Webhook handler 需设定返回 `shipping_details` 和 `customer_details` (含邮箱和账单地址)。 
+* **支付成功后:**
+    * 客户收到邮件，内含1个链接 (Magic Link)、1个按钮 (Reorder)、1封信。 
+    * **Magic Link ("View My Order"):** 
+        * Token 足够长，确保安全，不设失效日期。 
+        * 链接嵌入订单号 (格式: 时间+随机6位验证码，如: 20250327-K9P2M0)。 
+        * 点击后无需输入信息，可查看：订单支付成功提示、客户参数选择及上传照片缩略图、预计货物制作时间、货物处理/发货状态 (如发货，后台输入跟踪号后客户可见物流链接)、联系方式 (邮箱供拷贝)、"Reorder" 按钮。 
+        * **Reorder 按钮 (Magic Link内):** 标注 "Reorder in the future using your old order info"。带客户回主页，后台用 hidden form fields 记录旧订单的非价格配置偏好 (例如画框类型偏好，但不包括原图片、尺寸、画作类型及当时的具体价格)。客户Reorder时，所有产品和服务的价格将按照当前网站的最新价格标准重新计算。系统可根据旧订单信息预填部分选项，方便用户。
+        * 评价入口。 
+    * **Reorder 按钮 (邮件内):** 功能同 Magic Link 内的 Reorder 按钮。 
+    * **信件内容:** 
+        ```
+        You don’t need to create an account to manage your order. 
+        Please save this email and star it in your inbox. 
+        Click the link below to:
+        View your order ID
+        View your order details (size, frame, photo preview etc.)
+        Track your order status and shipping info
+        Contact us
+        [Magic Link: View My Order] 
+        (Your secure Magic Link – no password required) 
+        [Button: Click the button below to reorder in the future using your old order info]
+        ```
+    * **跳转:** 支付成功后跳转到 Magic Link 页面 (即确认页面)。 
+* **支付失败后:**
+    * 程序带客户回到 Stripe 页面的上一个页面 (准备重新进入结账流程的页面)。 
+    * 在返回页面顶部显示 "Payment failed. Please try again or use another card." 
+
+## 4. 核心功能 - Send My Quote & Preview
+
+* 点击按钮后，系统发送邮件给客户。 
+* 邮件中的链接可带客户回到面临 checkout 的页面。 
+* 潜在未购买客户的邮箱信息被数据库留存。 
+* 邮件中提供客户最后一次生成的原图和 512像素预览图 (无水印) 供下载。 
+
+## 5. 核心功能 - 主页第二部分 (画廊)
+
+* **内容更新:** 管理后台模板添加原图和成品图 (油画或打印油画)。 
+* **水印:** Cloudinary 自动为100像素的成品图添加水印。原图左侧用40像素可爱弯曲箭头 (Unicode emoji) 指向右边成品图。两图下方对齐。 
+* **布局:** 一行可放两组横向并列的图片组。 
+* **交互:**
+    * 手指点击小图，弹出大图 (占屏幕2/3)，不跳转页面 (JavaScript 实现)。 
+    * 弹出大图两侧有左右箭头，供客户在不关闭弹窗情况下切换查看大图。 
+    * 按交叉符或点击原图外区域关闭大图，返回主页。 
+* **加载优化 (懒加载):** 
+    * **三级加载策略:**
+        1.  **第一屏:** 加载模糊的 Base64 占位图 (Cloudinary 生成: `w_50,e_blur:100,q_10,f_jpg`, <1KB)。
+        2.  **滚动时:** 加载缩略图 (WebP 格式)。
+        3.  **点击时:** 加载原图 (延迟加载)。
+    * 需要 CDN 加速。 
+* **SEO 与内容生成:**
+    * 使用 HuggingFace CLIP 模型自动生成图片 alt 文本和 meta 描述 (富文本)，针对画廊展示区图片。 
+    * 每日凌晨通过 Celery 批量处理新增画廊图片，使用 CLIP 生成描述后自动填充字段。 
+
+## 6. 核心功能 - 主页第三部分 (评价)
+
+* **评价系统:** Yotpo。 
+* **评价催收:**
+    * 通过 Yotpo 设置发送邀请评价信。 订单完成后 (标记为“已送达”后7天) 自动发送评价邀请邮件。附折扣码 (10% off)，折扣码可用于下次购买，并设定60天有效期。
+    * 邀请信附带折扣码说明。 
+    * **折扣码生成与管理:**
+        * Stripe 内置折扣系统 (最简单)。 
+        * 或用 Python 生成唯一码，存入 SQLite (新增 `discounts` 表)。在 Stripe 支付时验证并减免。 
+* **获取折扣方式:**
+    * **留评价:**
+    * **邀请朋友:** 生成邀请链接 (e.g., `yourdomain.com/invite?ref=#20250327-K9P2M`)，朋友下单后双方获折扣 (10% off)。 
+* **折扣规则:**
+    * 折扣码60天有效期。 
+    * 两种折扣可叠加。 意思是“留评价折扣”和“邀请朋友折扣”可以同时作用于一个订单。
+* **SEO 与内容生成 (评价图片):**
+    * 使用 HuggingFace CLIP 模型自动生成图片 alt 文本和 meta 描述 (富文本)，针对用户评价中的图片。 
+    * 每日凌晨通过 Celery 批量处理，自动填充字段。 
+* **评价分析:**
+    * 从用户评价文本中提取高频关键词生成星级标签。Yotpo 负责收集原始评价，本系统 (HuggingFace) 做二次 NLP 分析。 
+
+## 7. 核心功能 - 主页第四部分 (其他信息)
+
+* 部分内容放主页，部分链接去其他静态页面。 
+* **内容包括:**
+    * 联系邮箱 (展示邮箱，旁边放 copy 按钮)。 
+    * Privacy Policy, Terms of Service (法律要求，Google SEO 偏好)。 
+    * Shipping & Delivery, Return & Refund Policy (增加客户信任，SEO 帮助)。 
+    * Q&A。 
+* **实现方式:** 简单 HTML 页面，手写或用免费模板生成，链接放主页底部。 
+* **退货要点:** "定制商品原则上不支持退货，但出现以下情况可退款：实物与设计稿严重不符 (需提供对比图)；运输导致的破损 (需72小时内提供证据)"。 
+* **法律声明:** 针对美国市场加 CCPA 声明，欧洲加 GDPR 条款。 
+* 这些固定分页面 (如“关于我们”、“隐私政策”等) 使用 Jinja2 模板预渲染成 HTML 字符串，固定在 `static` 项目文件夹中。 
+
+## 8. 核心功能 - 主页第五部分 (聊天工具)
+
+* **浮动聊天按钮:** Tawk.to。
+
+## 9. 后台管理系统需求 (基于 FastAPI Admin )
+
+1.  **订单管理:**
+    * 订单列表与详情 (客户信息、油画尺寸、框架类型、价格等)。
+    * 订单状态管理 (待处理、制作中、已发货、已完成)。
+    * 物流追踪 (录入跟踪号，系统自动发邮件通知客户)。
+    * 订单导出 (便于报表)。
+    * 支付状态监控 (查看 Stripe 支付状态)。
+2.  **画廊管理:**
+    * 案例上传 (原图和成品油画图片对比)。
+    * 水印管理 (Cloudinary 自动添加)。
+    * 案例分类 (按风格、类型)。
+    * 案例排序。
+    * 内容编辑 (描述、标签等)。
+    * 画框选择的4个占位图，供图片上传和置换（虽然不属于画廊，可以暂时放在这里）。
+3.  **评价管理 (Yotpo):**
+    * Yotpo 评价监控。
+    * 评价回复。
+    * 折扣码生成 (为评价客户)。
+    * 关键词标签 (从评价中提取)。
+    * 数据统计 (星级分布、热门标签等)。
+4.  **价格与运费设置:**
+    * 画种价格设置 (人物、风景、抽象)。
+    * 画框价格设置。
+    * 折扣管理 (评价折扣、分享折扣等)。
+5.  **数据分析与报表:**
+    * 销售统计 (总销售额、订单数量、平均订单金额)。
+    * 地区分布。
+    * 画种偏好。
+    * 转化率分析。
+    * Google Analytics 集成。
+6.  **内容管理:**
+    * SEO 信息设置 (Meta 标签、Schema 标记)。
+    * 静态页面编辑 (Privacy Policy 等)。
+    * FAQ 管理。
+    * 联系信息更新。
+7.  **系统设置:**
+    * 邮件模板配置 (订单确认、发货通知等)。
+    * 图片处理设置 (Cloudinary, CLIP 模型参数)。
+    * Stripe 配置 (API 密钥、Webhook)。
+    * 系统备份 (数据库备份策略)。
+    * Tawk.to 设置。
+8.  **用户管理 :**
+    * 目前只需要设置我自己一个人作为管理者用户。
+9.  **API 集成管理:**
+    * Stripe webhook 配置。
+    * Yotpo 设置。
+    * Cloudinary 设置。
+10. **客户数据管理:**
+    * 客户信息浏览。
+    * 邮件列表管理 (潜在客户)。
+    * Magic Link 管理。
+* 隐私数据保护 (符合 CCPA, GDPR)。
+
+## 10. 技术架构与开发环境
+
+* **编程语言:** Python 3.11 
+* **后端框架:** FastAPI (内置 Pydantic 验证和 OpenAPI 文档) 
+* **虚拟环境:** venv 
+* **架构:** 解耦架构 
+* **数据库:** PostgreSQL 
+* **异步任务队列:** Celery + Redis (stablity.ai 处理) 
+* **服务器托管:**
+    * 开发阶段: Fly.io 免费版 
+* **容器化工具:** Docker 
+* **部署:** GitHub Actions 自动部署到 Fly.io 
+
+## 11. 其他技术与工具
+
+* **域名注册:** Namecheap (DNS 指向 Fly.io)。 
+* **CDN 加速:** Cloudflare 和 Cloudinary CDN 混合架构。 
+    * Cloudflare: HTML/CSS/JS 静态文件，非图片类资源。
+    * Cloudinary: 用户上传原图，AI 生成预览图。
+* **负载均衡:** 在fly.io内部优化。
+* **邮件服务:** SMTP (使用 Resend) 发送订单确认、Magic Link、报价链接。 
+* **运维 - 监控:** UptimeRobot (免费50个监控，每5分钟监控网站可用性)。 
+* **运维 - 日志:** Fly.io 内置日志 + Sentry (免费，捕获支付/上传错误)。 
+
+## 12. 安全性基础措施
+
+在保证功能实现的同时，应采取以下基础安全措施以保障网站和用户数据的安全：
+* **框架内置安全特性**：
+    * `FastAPI`: 充分利用其内置的基于 `Pydantic` 的数据验证机制，对所有传入数据进行严格校验，防止不合规或恶意的数据注入。
+    * `Jinja2`: 确保在使用 `Jinja2` 模板引擎渲染前端页面时，始终开启并正确应用其自动 HTML 转义功能，这是防御 XSS (跨站脚本攻击) 的基础。对任何需要展示在 HTML 中的用户输入内容，都要确保进行了适当的转义处理。
+* **CSRF 防护 (Cross-Site Request Forgery)**：
+    * 对于所有可能改变服务器状态的 HTTP 请求 (如 POST, PUT, DELETE 等，特别是后台管理操作相关的表单提交)，`FastAPI` 应用应集成 CSRF 保护机制。可以研究使用 FastAPI 社区推荐的 CSRF 库或结合自定义中间件实现 Token 验证。
+* **强制 HTTPS**：
+    * 整个网站必须通过 HTTPS 提供服务，确保数据在传输过程中的加密。部署平台如 `Fly.io` 通常会提供自动化的 SSL 证书管理和 HTTPS 重定向配置。
+* **依赖库安全管理**：
+    * 建立定期检查和更新项目依赖库的流程。使用工具如 `pip list --outdated` 检查过时库，并配合安全漏洞扫描工具（例如 `pip-audit` 或集成 GitHub `Dependabot`）来识别和修复第三方库中已知的安全漏洞。
+* **Cloudinary 安全上传**:
+    * 按照之前的建议，采用**签名的客户端直接上传** (`Client-side Upload`) 方式处理用户图片上传，这不仅减轻了服务器负担，也通过签名机制增强了上传过程的安全性。
+* **Stripe 集成安全**:
+    * 严格遵循 `Stripe` 官方推荐的安全最佳实践。关键在于 `API` 密钥的安全管理（**绝不硬编码在代码中**，应通过环境变量等安全方式注入）以及 `Webhook` 端点的安全验证（**必须验证 Stripe 发送的请求签名**，防止伪造的 Webhook 调用）。
+* **Magic Link 安全性**:
+    * 保证 Token 具有足够的长度和高随机性。
+    * **需求权衡**：如果业务上强烈要求 Token “不设失效日期”，则必须极度重视 Token 的保密性，并强烈建议在后台管理系统中提供**手动撤销/使特定 Magic Link 失效**的功能，以便在疑似泄露时进行干预。
+* **避免敏感信息泄露**：
+    * 在生产环境中，应配置错误处理机制，**避免向最终用户的前端界面直接暴露详细的技术性错误信息或堆栈跟踪**。前端应展示统一的、用户友好的错误提示。详细的错误信息应记录在后端日志（如 `Fly.io` 日志和 `Sentry`）中，供开发和运维人员排查问题。
+
+## 13. 前端与用户体验
+
+* **核心要求:** 手机页面优化为最主要目标 (90%+ 用户通过手机交互)。 
+* **响应式设计:** 自适应手机和电脑屏幕。 
+    * 使用 Tailwind CSS 及其响应式前缀 (sm:, md:, lg:)。 
+    * 使用 Chrome DevTools 测试不同设备分辨率。 
+    * 保证手指易点击区域 (如 py-3 px-6 text-lg)。 
+    * `hover:` 事件仅用于桌面端，移动端改为 `click:` 事件。 
+    * 使用 `srcset` 为不同设备加载不同分辨率的图片。 
+* **加载速度与SEO:**
+    * 追求快速加载，利于SEO。 
+    * 画廊区域HTML骨架硬编码在模板中，动态数据通过 `<script type="application/json">` 注入页面头部。 
+    * 其他从主页点击进入的页面尽量做纯静态页。 
+    * 后期使用 Webpack, Vite, esbuild 等工具合并和优化代码。  
+* **视觉与交互:**
+    * 加入 Unicode emojis 增加亲密度 (从 unicode.org, emojipedia.org 查找)。 
+    * 字体: Google Fonts Roboto。 
+    * 使用相对单位 (rem 或 vw) 而非固定像素 (px)。 
+    * 行距设为1.5倍字体大小 (`line-height: 1.5`)。 
+    * 确保文字和背景对比度符合 WCAG 标准 (如 4.5:1)，使用工具 (如 Contrast Checker) 验证。 
+* **模板引擎:** Jinja2 (FastAPI 配合渲染动态页面，主页面保持静态结构，动态数据通过 JSON 注入)。 
+* **前端优化工具:** Vite / Esbuild / Webpack (后期合并和优化前端代码)。 
+
+## 14. SEO 与分析
+
+* **Google Analytics:** 监控访问量、设备类型、转化率 (通过 Tag Manager)。 
+* **Google Search Console:** 注册域名，DNS验证所有权，检查索引状态，优化SEO (如提交sitemap.xml, 可用 Flask 生成 sitemap.xml)。 
+* **Google Merchant Center:** 注册，上传产品数据 (油画信息)，支持 Google Shopping 展示。 
+* **Google Ads:** 投放关键词。 
+* **Meta 标签优化:** 专门进行 SEO 工作，加 `<meta>` 标签。 
+* **Schema 标记:**
+    * 为每个产品变体 (不同尺寸/风格) 动态生成单独的 `Product` Schema (Redis 和 JSON 配合保证高性能)。 
+    * 使用 Python 在模板中动态填充价格和可用性信息。 
+    * 使用 Google's Rich Results Test 验证 Schema。 
+    * 定期检查 Search Console 中的结构化数据报告。 
+    * **性能优化:** 内联关键 Schema 数据在 `<head>` 中；对画廊图片等大量结构化数据使用 JSON-LD 文件懒加载。 
+    * **Google Shopping 集成:** Schema 包含所有必需字段 (gtin, mpn 或 sku - 可为定制产品生成虚拟 SKU; 准确的 price 和 priceCurrency; 清晰的 availability 状态)。 
+    * **本地SEO优化:** 添加 `LocalBusiness` Schema (含运营地址，即使在家办公)，包含服务区域 (`areaServed`) 信息。 
+
+## 15. 图片与 AI 模型
+
+* **图片处理库:** Pillow (格式转换、缩略图生成等预处理)。 
+* **云存储:** Cloudinary (图片上传管理、水印、缩略图，解决上传错误问题)。 
+    * 注意 Cloudinary 上传格式欺骗，即使允许所有格式仍需验证文件头。 
+    * 解决反复出现的 Cloudinary 上传不成功问题，特别是 "request got values for both 'fields' and 'body'". 
+* **AI 模型 - HuggingFace CLIP:** 
+    * 判断图片类型 (人物、风景、抽象) 用于定价和风格选择。 
+    * 自动生成图片 alt 文本和 meta 描述 (画廊和用户评价图片)，通过 Celery 批量处理。 
+    * 从用户评价文本中提取高频关键词生成星级标签 (Yotpo 收集原始评价，系统做二次NLP分析)。 
+    * 备选方案: Replicate AI (上线后考虑)。 
+* **AI 油画风格生成:** stablity.ai (异步调用避免阻塞)。 
+    * **恶意上传限制:** Redis 记录每个 IP/邮箱每日免费生成 20 张图，超出提示“请联系我们进行购买”。 
+    * Celery 设置任务优先级，普通用户 > 疑似恶意用户。 
+
+## 15. 技术栈表格 (基于 FastAPI)
+
+| 类别         | 技术/工具                                     | 说明                                                                                                                                                                                                                            |
+|--------------|-----------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 域名注册     | Namecheap                                     | 简单易用，约$10/年，DNS指向Fly.io。                                                                                                                                                                                               |
+| 编程语言     | Python 3.11                                   | 最新稳定版，支持异步特性，兼容 FastAPI 和相关库。                                                                                                                                                                                     |
+| 后端框架     | FastAPI                                       | 内置 Pydantic 验证和 OpenAPI 文档。                                                                                                                                                                                              |
+| 服务器托管   |                                               | 开发阶段：先用Fly.io免费版验证核心流程。                                                                                                                                            |
+| 虚拟环境     | venv                                          | 开发过程保持项目隔离，标准 Python 虚拟环境工具。                                                                                                                                                                                   |
+| 前端框架/样式 | Tailwind CSS                                  | 响应式设计，支持手机优先优化，配合 HTML 模板（如 Jinja2）。                                                                                                                                                                          |
+| 模板引擎     | Jinja2                                        | FastAPI 可配合 Jinja2 渲染动态页面，主页面保持静态结构，动态数据通过 JSON 注入。                                                                                                                                                            |
+| 数据库       | PostgreSQL                                    |                                                                                                                                                                                                                                 |
+| 异步任务队列 | Celery + Redis                                | 处理耗时任务（如 Cloudinary 上传、stablity.ai 处理），避免阻塞主线程。                                                                                                                                                                    |
+| 图片处理     | Pillow                                        | 处理图片格式转换、缩略图生成等，上传前预处理。                                                                                                                                                                                         |
+| 云存储       | Cloudinary                                    | 图片上传和管理，支持水印、缩略图生成，解决上传错误问题。                                                                                                                                                                                   |
+| AI 模型      | HuggingFace CLIP                              | 判断图片类型（人物、风景、抽象），用于定价和风格选择。(Replicate AI作为备用方案以备宕机，上线后再考虑什么时候搞)                                                                                                                                 |
+|              | HuggingFace CLIP                              | 使用HuggingFace CLIP模型自动生成图片alt文本和meta描述，富文本。针对画廊展示区图片，和用户评价中的图片。每日凌晨通过Celery批量处理新增画廊图片，使用CLIP生成描述后，自动填充相应字段                                                                                   |
+|              | HuggingFace CLIP                              | 从用户评价文本中提取高频关键词生成星级标签，Yotpo 负责收集原始评价，本系统做二次NLP分析                                                                                                                                                            |
+| AI油画风格生成 | stablity.ai                                   | 生成油画风格图片，异步调用避免阻塞。                                                                                                                                                                                                   |
+| 支付系统     | Stripe                                        | 处理支付，附带 metadata 强校验国家选择，支持折扣码。                                                                                                                                                                                     |
+| CDN 加速     | Cloudflare 和 Cloudinary CDN混合架构            | Cloudflare加速范围：所有HTML/CSS/JS静态文件, 非图片类资源（如PDF说明书）。Cloudinary（免费版初始额度）加速范围：用户上传的原图（`/original/`路径）, AI生成的油画预览（`/preview/`路径）。                                                                    |
+| 邮件服务     | SMTP (用resend)                               | 发送订单确认邮件、Magic Link 和未购买客户的报价链接。                                                                                                                                                                                   |
+| 前端优化     | Lazy Loading + WebP 格式 + Base64 占位图      | 三级加载策略，提升加载速度，手机优先优化。                                                                                                                                                                                             |
+| 开发工具     | Vite / Esbuild / webpack                      | 后期合并和优化前端代码，提升加载性能。                                                                                                                                                                                                 |
+| 容器化工具   | Docker                                        |                                                                                                                                                                                                                                 |
+| 评价系统     | Yotpo                                         |                                                                                                                                                                                                                                 |
+| 部署         | GitHub Actions自动部署到Fly.io                | 用.github/workflows/deploy.yml，推送代码后自动部署到Fly.io，设置FLY_API_TOKEN。                                                                                                                                                        |
+| 字体         | Google Roboto                                 |                                                                                                                                                                                                                                 |
+| 聊天工具     | Tawk.to                                       |                                                                                                                                                                                                                                 |
+| Google工具   | Google Analytics, Search Console, Merchant Center, Google Ads | Analytics用Tag Manager，Search Console，Merchant Center上架油画，Ads投放关键词。Meta 标签 + Sitemap                                                                                                                             |
+| 分析工具     | Google Analytics + Tag Manager + Search Console | 监控流量、设备类型、转化率，优化 SEO。                                                                                                                                                                                               |
+| 运维 - 监控  | UptimeRobot（免费50个监控）                   | 每5分钟监控网站可用性，免费50个监控点。                                                                                                                                                                                                |
+| 运维 - 日志  | Fly.io内置日志 + Sentry（免费）                 | Fly.io日志查看运行状态，Sentry捕获支付/上传错误，免费计划足够。                                                                                                                                                                            |
+| 后台管理     | FastAPI Admin                                 |                                                                                                                                                                                                                                 |

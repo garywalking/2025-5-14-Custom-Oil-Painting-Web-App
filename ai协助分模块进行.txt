@@ -1,0 +1,126 @@
+
+
+阶段 1: 项目初始化与基础架构 (Setup & Foundations)
+README.md: (初步) 记录项目目标和基本设置。
+.gitignore: 忽略不必要的文件。
+pyproject.toml / requirements.txt: 定义 Python 版本和基础依赖 (FastAPI, Uvicorn, Pydantic)。
+app/main.py: 创建最基础的 FastAPI 应用实例，包含一个简单的 "/" 路由。
+app/core/config.py: 设置基础配置（如项目名称），学习如何从环境变量加载。
+.env.example / .env: 定义环境变量。
+Dockerfile, docker-compose.yml: (初步) 配置本地开发环境 (App, PostgreSQL, Redis)。确保可以构建镜像并运行基础应用。
+app/db/session.py: 配置数据库连接 (PostgreSQL)。
+app/api/dependencies.py: (可选) 创建 get_db 依赖项。
+app/templates/base.html, app/templates/index.html: 设置基础 Jinja2 模板和主页结构。
+tailwind.config.js, postcss.config.js, app/static/css/styles.css: 集成 Tailwind CSS，编译基础样式。
+app/main.py: 添加挂载静态文件和模板目录的配置。
+
+阶段 2: 核心用户流程 - 图片上传与初步展示 (Core Flow - Upload & Initial Display)
+app/core/external_apis/cloudinary_client.py: 封装 Cloudinary 配置和签名生成逻辑。
+app/services/image_service.py: 实现生成 Cloudinary 上传签名的服务。
+app/schemas/image.py: 定义图片上传请求/响应的数据结构。
+app/api/v1/endpoints/uploads.py: 创建获取上传签名的 API 路由。
+app/static/js/main.js: 编写前端 JavaScript，处理图片选择、调用签名 API、使用 Cloudinary 的 SDK 或直接 POST 上传图片、显示加载动画、显示缩略图。
+更新 app/templates/index.html: 添加上传按钮、图片预览区域、格式说明等 UI 元素。
+app/static/img/loading.gif: 添加加载动画图片。
+
+阶段 3: 核心用户流程 - AI 处理与定价基础 (Core Flow - AI & Basic Pricing)
+app/tasks/celery_app.py: 配置 Celery 应用实例 (连接 Redis)。
+app/core/external_apis/stability_client.py, app/core/external_apis/clip_client.py: 封装 Stability AI 和 HuggingFace CLIP 的 API 调用逻辑。
+app/services/ai_service.py: 实现调用 AI 模型的服务逻辑。
+app/tasks/image_processing.py: 创建 Celery 任务，异步调用 ai_service 中的方法处理图片（风格生成、类型判断）。
+app/schemas/ai_models.py: 定义与 AI 任务相关的数据结构。
+app/api/v1/endpoints/ai_processing.py: (可选) 创建触发异步 AI 处理的路由（或者在上传成功后直接触发）。
+app/schemas/pricing.py: 定义价格计算请求和响应结构。
+app/db/models/product.py (或类似模型): 定义存储基础价格（如按画种）的数据库模型。
+app/db/crud/crud_product.py (或类似): 实现基础价格的数据库查询。
+app/services/pricing_service.py: 实现根据 CLIP 判断的画种和基础尺寸计算初始价格的逻辑。
+app/api/v1/endpoints/pricing.py: 创建获取初步价格的 API 路由。
+更新 app/static/js/main.js 和 app/templates/index.html: 显示 AI 生成的风格图（或占位符）、画种单选、触发价格计算并显示。
+
+阶段 4: 核心用户流程 - 完善选项与计算 (Core Flow - Options & Calculations)
+app/static/img/frame_placeholders/: 添加画框占位图。
+更新 app/services/pricing_service.py: 添加画框价格计算、尺寸约束（最长边）、重量计算、制作时间判断逻辑。
+更新 app/schemas/pricing.py: 包含画框、尺寸等输入。
+更新 app/api/v1/endpoints/pricing.py: 处理更完整的价格计算请求。
+更新 app/static/js/main.js 和 app/templates/index.html: 添加画框选择 UI、最长边输入、显示计算出的尺寸、重量、制作时间、画框价格。
+
+阶段 5: 核心用户流程 - 运费计算 (Core Flow - Shipping)
+app/core/external_apis/yunexpress_client.py: 封装云途物流 API 调用。
+app/schemas/shipping.py: 定义运费计算请求/响应结构。
+app/services/shipping_service.py: 实现调用云途 API 计算运费的逻辑。
+app/api/v1/endpoints/shipping.py: 创建获取运费的 API 路由。
+更新 app/static/js/main.js 和 app/templates/index.html: 添加国家选择/输入框、触发运费计算并显示结果（两个选项）、显示总运费。
+
+阶段 6: 结账流程与订单持久化 (Checkout & Order Persistence)
+app/core/external_apis/stripe_client.py: 封装 Stripe API 调用（创建 Checkout Session, 处理 Webhook）。
+app/schemas/order.py, app/schemas/quote.py: 定义订单和报价的数据结构。
+app/db/models/order.py, app/db/models/quote.py, app/db/models/order_item.py (可能): 定义订单、报价相关的数据库模型。
+app/db/crud/crud_order.py, app/db/crud/crud_quote.py: 实现订单和报价的数据库操作。
+app/services/order_service.py: 实现创建 Stripe Checkout Session（附加 metadata）、处理 Stripe Webhook（验证签名、更新订单状态）的逻辑。
+app/services/quote_service.py: 实现保存报价信息的逻辑。
+app/api/v1/endpoints/orders.py: 创建发起支付的路由和接收 Stripe Webhook 的路由。
+app/api/v1/endpoints/quotes.py: 创建保存和发送报价的路由。
+app/static/js/checkout.js: (如果需要) 处理跳转到 Stripe Checkout 的逻辑。
+更新 app/templates/index.html, app/templates/partials/pricing_summary.html: 添加费用汇总、折扣选项、邮箱输入框、"Send My Quote & Preview" 和 "Checkout" 按钮。
+更新 app/static/js/main.js: 处理折扣勾选、调用报价/支付 API。
+
+阶段 7: 支付后流程与邮件通知 (Post-Payment & Notifications)
+app/core/external_apis/resend_client.py: 封装 Resend (或其他 SMTP) 邮件发送逻辑。
+app/services/notification_service.py: 实现发送不同类型邮件（订单确认、报价、发货等）的服务。
+app/templates/email/: 创建各种邮件模板。
+app/core/security.py: (可能) 添加生成和验证安全 Token 的函数（用于 Magic Link）。
+app/schemas/token.py: 定义 Token 相关数据结构。
+app/services/magic_link_service.py: 实现 Magic Link 生成和验证逻辑。
+app/api/v1/endpoints/magic_link.py: 创建验证 Magic Link 并显示订单详情页面的路由。
+app/templates/order_confirmation.html: 创建 Magic Link 点击后展示的订单确认页面模板。
+更新 app/services/order_service.py / app/services/quote_service.py: 在相应操作成功后调用 notification_service 发送邮件。
+app/tasks/notification_tasks.py: (可选) 将邮件发送放入异步任务。
+
+阶段 8: 画廊功能 (Gallery Feature)
+app/db/models/gallery_item.py, app/db/crud/crud_gallery.py: 画廊内容的数据库模型和操作。
+app/schemas/gallery.py: 画廊数据的 API 结构。
+app/services/gallery_service.py: 获取画廊数据的逻辑。
+app/api/v1/endpoints/gallery.py: 提供画廊数据的 API 路由。
+app/tasks/seo_generation.py: 创建 Celery 任务，使用 CLIP 为画廊图片生成 alt/meta 文本。
+更新 app/templates/index.html (或创建 partials/gallery.html): 添加画廊展示区域的 HTML 结构。
+app/static/js/gallery.js: 实现画廊图片的懒加载、点击放大、左右切换、关闭弹窗等交互。
+集成 Cloudinary 水印功能到图片展示流程中。
+
+阶段 9: 评价系统与折扣 (Review System & Discounts)
+app/core/external_apis/yotpo_client.py: (如果需要API交互) 封装 Yotpo API。
+更新 app/templates/index.html: 集成 Yotpo 的展示小部件。
+配置 Yotpo 自动发送评价邀请邮件（在 Yotpo 后台完成）。
+app/schemas/discount.py, app/db/models/discount.py, app/db/crud/crud_discount.py: (如果选择数据库方案) 折扣码模型和操作。
+app/services/discount_service.py: 实现折扣码生成（评价/邀请）、验证、应用到订单总价的逻辑（可能需要修改 order_service 或 pricing_service）。
+更新 Stripe 集成逻辑以支持应用折扣码。
+(如果需要) 实现邀请链接功能。
+更新 app/tasks/seo_generation.py: 添加处理用户评价中图片的功能。
+(可选) 实现评价文本的二次 NLP 分析任务。
+
+阶段 10: 后台管理系统 (Admin Interface)
+app/db/models/user.py: 定义管理员用户模型。
+app/admin/auth.py: (可能) 配置后台登录认证。
+app/admin/views.py: 使用 FastAPI Admin 为需要管理的模型 (Order, Quote, GalleryItem, Discount, User 等) 创建视图。
+更新 app/main.py: 集成 FastAPI Admin 应用。
+为画廊管理添加上传画框占位图的功能。
+
+阶段 11: 静态页面与其他集成 (Static Pages & Other Integrations)
+app/templates/static_pages/: 创建 Privacy Policy, Terms, Shipping, Returns 页面的 HTML 内容。
+更新 app/main.py (或新建 router): 添加服务这些静态页面的路由。
+更新 app/templates/base.html / partials/footer.html: 添加指向这些静态页面的链接。
+集成 Tawk.to 聊天插件脚本到 base.html。
+
+阶段 12: SEO, 分析与部署准备 (SEO, Analytics & Deployment Prep)
+app/main.py: (可能) 添加生成 sitemap.xml 的路由。
+更新 app/templates/base.html: 添加 Google Analytics (Tag Manager) 脚本。
+实现 Schema 标记的动态生成（可以在服务层或模板层完成）。
+fly.toml: 配置 Fly.io 部署。
+.github/workflows/deploy.yml: 编写 GitHub Actions 自动部署脚本。
+配置 Cloudflare CDN。
+配置 UptimeRobot 监控和 Sentry 错误跟踪。
+
+阶段 13: 测试、安全加固与优化 (Testing, Security & Optimization)
+tests/: 编写单元测试和集成测试，覆盖关键业务逻辑和 API 端点。
+安全审查：检查 CSRF 防护（特别是后台）、HTTPS 强制、依赖库安全、Webhook 验证、输入验证、错误信息处理等。
+性能优化：检查数据库查询效率、图片加载策略、前端资源打包优化（可能需要引入 Webpack/Vite/Esbuild）。
+README.md: 完善文档。

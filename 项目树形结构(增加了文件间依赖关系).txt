@@ -1,0 +1,146 @@
+custom_oil_painting_app/
+├── app/                  # 主要应用源代码 (Main application source code)
+│   ├── api/              # API 路由 (FastAPI APIRouter)
+│   │   ├── v1/           # API 版本控制 (API versioning)
+│   │   │   ├── endpoints/ # 具体功能的路由文件 (Specific endpoint files)
+│   │   │   │   ├── uploads.py       # 图片上传相关 (Image upload related) # DEPENDS ON: fastapi, app.schemas.image, app.services.image_service, app.api.dependencies.get_db (potentially)
+│   │   │   │   ├── ai_processing.py # AI 分析与风格生成触发 (AI analysis & style generation trigger) # DEPENDS ON: fastapi, app.schemas.ai_models, app.services.ai_service, app.tasks.image_processing, app.api.dependencies.get_db (potentially)
+│   │   │   │   ├── pricing.py       # 定价、画框、尺寸计算 (Pricing, frame, size calculation) # DEPENDS ON: fastapi, app.schemas.pricing, app.services.pricing_service, app.api.dependencies.get_db (potentially)
+│   │   │   │   ├── shipping.py      # 运费计算 (Shipping calculation) # DEPENDS ON: fastapi, app.schemas.shipping, app.services.shipping_service
+│   │   │   │   ├── orders.py        # 订单处理 (Checkout, Webhooks) # DEPENDS ON: fastapi, app.schemas.order, app.services.order_service, app.services.notification_service, app.api.dependencies.get_db, stripe (library for webhook validation)
+│   │   │   │   ├── quotes.py        # 报价处理 (Send Quote) # DEPENDS ON: fastapi, app.schemas.quote, app.services.quote_service, app.services.notification_service, app.api.dependencies.get_db
+│   │   │   │   ├── magic_link.py    # Magic Link 验证与页面 (Magic Link view) # DEPENDS ON: fastapi, app.schemas.token, app.schemas.order, app.services.magic_link_service, app.api.dependencies.get_db, jinja2, app.templates.order_confirmation.html
+│   │   │   │   ├── gallery.py       # 画廊数据接口 (Gallery data API) # DEPENDS ON: fastapi, app.schemas.gallery, app.services.gallery_service, app.api.dependencies.get_db
+│   │   │   │   └── __init__.py      # DEPENDS ON: (Likely empty or exports symbols from sibling endpoint modules if a collective router is defined here)
+│   │   │   └── __init__.py          # DEPENDS ON: (Likely aggregates routers from ./endpoints/ if v1.router is defined here, e.g., fastapi.APIRouter, .endpoints.uploads, .endpoints.orders, etc.)
+│   │   ├── __init__.py              # DEPENDS ON: (Likely aggregates routers from ./v1/ if api.router is defined here)
+│   │   └── dependencies.py # 通用 API 依赖项 (Common API dependencies, e.g., get_db) # DEPENDS ON: fastapi.Depends, sqlalchemy.orm.Session, app.db.session.SessionLocal, app.core.config (potentially for JWT token validation deps)
+│   ├── core/             # 核心逻辑和配置 (Core logic and configuration)
+│   │   ├── config.py     # 应用配置 (Application settings from env vars) # DEPENDS ON: pydantic_settings, os, typing
+│   │   ├── logging_config.py # 日志配置 # DEPENDS ON: logging, app.core.config (potentially)
+│   │   ├── security.py   # 安全相关工具 (Security utilities - tokens, etc.) # DEPENDS ON: passlib, python-jose (jwt), datetime, app.core.config
+│   │   ├── external_apis/ # 封装第三方 API 客户端 (Clients for external services)
+│   │   │   ├── cloudinary_client.py # DEPENDS ON: cloudinary (library), app.core.config
+│   │   │   ├── stability_client.py  # DEPENDS ON: requests/httpx (or Stability AI SDK), app.core.config
+│   │   │   ├── clip_client.py       # DEPENDS ON: transformers/torch/PIL (or CLIP client library/SDK), app.core.config
+│   │   │   ├── yunexpress_client.py # DEPENDS ON: requests/httpx (or YunExpress SDK), app.core.config
+│   │   │   ├── stripe_client.py     # DEPENDS ON: stripe (library), app.core.config
+│   │   │   ├── yotpo_client.py      # (可能只是配置或简单调用) # DEPENDS ON: requests/httpx (or Yotpo SDK), app.core.config (if used)
+│   │   │   ├── resend_client.py     # DEPENDS ON: resend (library), app.core.config
+│   │   │   └── __init__.py          # DEPENDS ON: (Likely empty, or exports client instances)
+│   │   └── __init__.py              # DEPENDS ON: (Likely empty)
+│   ├── db/               # 数据库相关 (Database related code)
+│   │   ├── models/       # ORM 模型 (SQLAlchemy or other ORM models)
+│   │   │   ├── base.py       # Base model class # DEPENDS ON: sqlalchemy.ext.declarative.declarative_base, sqlalchemy (for Column types if common base fields are defined)
+│   │   │   ├── order.py      # DEPENDS ON: sqlalchemy, app.db.models.base.Base, .user, .order_item (for relationships)
+│   │   │   ├── order_item.py # (可能需要，用于存储具体画作信息) # DEPENDS ON: sqlalchemy, app.db.models.base.Base, .order (for relationships)
+│   │   │   ├── quote.py      # DEPENDS ON: sqlalchemy, app.db.models.base.Base, .user (potentially for relationships)
+│   │   │   ├── user.py       # (管理员用户) # DEPENDS ON: sqlalchemy, app.db.models.base.Base
+│   │   │   ├── discount.py   # (如果选择数据库存储折扣码) # DEPENDS ON: sqlalchemy, app.db.models.base.Base
+│   │   │   ├── gallery_item.py # DEPENDS ON: sqlalchemy, app.db.models.base.Base
+│   │   │   └── __init__.py   # DEPENDS ON: (Likely exports all model classes from this directory: .base, .order, .user, etc.)
+│   │   ├── crud/         # CRUD 操作 (Data access layer)
+│   │   │   ├── base_crud.py # (可选，通用 CRUD 方法) # DEPENDS ON: sqlalchemy.orm.Session, pydantic.BaseModel, typing.Generic, typing.TypeVar, app.db.models.base.Base
+│   │   │   ├── crud_order.py    # DEPENDS ON: sqlalchemy.orm.Session, app.db.models.order, app.db.models.order_item, app.schemas.order, .base_crud (if used)
+│   │   │   ├── crud_quote.py    # DEPENDS ON: sqlalchemy.orm.Session, app.db.models.quote, app.schemas.quote, .base_crud (if used)
+│   │   │   ├── crud_gallery.py  # DEPENDS ON: sqlalchemy.orm.Session, app.db.models.gallery_item, app.schemas.gallery, .base_crud (if used)
+│   │   │   ├── crud_discount.py # DEPENDS ON: sqlalchemy.orm.Session, app.db.models.discount, app.schemas.discount, .base_crud (if used)
+│   │   │   └── __init__.py      # DEPENDS ON: (Likely exports all CRUD classes from this directory: .crud_order, .crud_quote, etc.)
+│   │   ├── session.py    # 数据库会话管理 (Database session management) # DEPENDS ON: sqlalchemy.create_engine, sqlalchemy.orm.sessionmaker, app.core.config
+│   │   └── __init__.py          # DEPENDS ON: (Likely empty, or exports SessionLocal, engine from .session)
+│   ├── schemas/          # Pydantic 模型 (API request/response validation)
+│   │   ├── image.py      # DEPENDS ON: pydantic, typing, datetime (potentially)
+│   │   ├── ai_models.py  # (与 AI 交互的数据结构) # DEPENDS ON: pydantic, typing
+│   │   ├── pricing.py    # DEPENDS ON: pydantic, typing, decimal
+│   │   ├── shipping.py   # DEPENDS ON: pydantic, typing
+│   │   ├── order.py      # DEPENDS ON: pydantic, typing, datetime, .image, .pricing, .shipping (for nested models)
+│   │   ├── quote.py      # DEPENDS ON: pydantic, typing, datetime
+│   │   ├── token.py      # (Magic Link Token) # DEPENDS ON: pydantic, typing
+│   │   ├── discount.py   # DEPENDS ON: pydantic, typing, datetime
+│   │   ├── gallery.py    # DEPENDS ON: pydantic, typing
+│   │   └── __init__.py   # DEPENDS ON: (Likely exports all schema classes from this directory)
+│   ├── services/         # 业务逻辑层 (Business logic layer)
+│   │   ├── image_service.py # 图片上传、Cloudinary 签名 # DEPENDS ON: app.core.external_apis.cloudinary_client, app.core.config, PIL (Pillow)
+│   │   ├── ai_service.py    # 调用 Stability, CLIP # DEPENDS ON: app.core.external_apis.stability_client, app.core.external_apis.clip_client
+│   │   ├── pricing_service.py # 核心定价、尺寸、重量、时间计算 # DEPENDS ON: app.schemas.pricing, decimal, app.db.crud (potentially for fetching base prices/rules)
+│   │   ├── shipping_service.py # 运费计算逻辑 # DEPENDS ON: app.core.external_apis.yunexpress_client, app.schemas.shipping
+│   │   ├── order_service.py   # 订单创建、支付处理、状态更新 # DEPENDS ON: app.db.crud.crud_order, app.schemas.order, app.core.external_apis.stripe_client, .pricing_service, .shipping_service, .notification_service, .discount_service (potentially)
+│   │   ├── quote_service.py   # 报价生成与发送 # DEPENDS ON: app.db.crud.crud_quote, app.schemas.quote, .notification_service
+│   │   ├── notification_service.py # 邮件发送逻辑 (Resend) # DEPENDS ON: app.core.external_apis.resend_client, jinja2, app.core.config, app.templates.email (paths)
+│   │   ├── magic_link_service.py # Magic Link 生成与验证 # DEPENDS ON: app.core.security, app.db.crud.crud_order (or token store), app.schemas.token, app.core.config
+│   │   ├── gallery_service.py  # 画廊逻辑 # DEPENDS ON: app.db.crud.crud_gallery, app.schemas.gallery
+│   │   ├── discount_service.py # 折扣码生成与应用 # DEPENDS ON: app.db.crud.crud_discount (if DB based), app.schemas.discount, app.core.external_apis.stripe_client (if Stripe coupons), secrets/uuid
+│   │   └── __init__.py         # DEPENDS ON: (Likely empty, or exports service classes)
+│   ├── tasks/            # Celery 异步任务 (Celery tasks)
+│   │   ├── celery_app.py # Celery 应用实例配置 # DEPENDS ON: celery, app.core.config
+│   │   ├── image_processing.py # Stability AI, CLIP 处理 # DEPENDS ON: .celery_app (for task decorator), app.services.ai_service (or specific clients), app.db.crud (potentially for status updates)
+│   │   ├── seo_generation.py  # CLIP 生成 alt/meta 文本 # DEPENDS ON: .celery_app, app.core.external_apis.clip_client, app.db.crud.crud_gallery (or app.services.gallery_service)
+│   │   ├── notification_tasks.py # 异步发送邮件 (可选) # DEPENDS ON: .celery_app, app.services.notification_service
+│   │   └── __init__.py           # DEPENDS ON: (Likely exports task functions or Celery app instance)
+│   ├── templates/        # Jinja2 模板 (Jinja2 templates)
+│   │   ├── base.html     # 基础模板 (Base template) # DEPENDS ON: app.static/css/styles.css, app.static/js/main.js, Google Fonts (external), partials (if included)
+│   │   ├── index.html    # 主页 (Main page) # DEPENDS ON: base.html, app.static/js/main.js, app.static/js/gallery.js (potentially)
+│   │   ├── order_confirmation.html # Magic Link 订单确认页 # DEPENDS ON: base.html (or specific base for this page)
+│   │   ├── email/        # 邮件模板 (Email templates)
+│   │   │   ├── order_confirmation_email.html # DEPENDS ON: base_email.html (if used)
+│   │   │   ├── quote_email.html              # DEPENDS ON: base_email.html (if used)
+│   │   │   ├── shipping_update_email.html    # DEPENDS ON: base_email.html (if used)
+│   │   │   ├── review_invitation_email.html  # DEPENDS ON: base_email.html (if used)
+│   │   │   └── base_email.html # (邮件基础模板) # DEPENDS ON: (Minimal styling, no external JS/CSS usually)
+│   │   ├── partials/     # 可复用的模板片段 (Reusable template parts)
+│   │   │   ├── header.html # DEPENDS ON: (Likely app.static links if any, or just branding)
+│   │   │   ├── footer.html # DEPENDS ON: (Links to static_pages)
+│   │   │   ├── pricing_summary.html # (费用汇总部分) # DEPENDS ON: (No specific file deps, uses variables passed by renderer)
+│   │   │   └── ...
+│   │   └── static_pages/ # 静态内容页面 (Privacy, Terms, etc.)
+│   │       ├── privacy.html # DEPENDS ON: base_static.html (or base.html)
+│   │       ├── terms.html   # DEPENDS ON: base_static.html (or base.html)
+│   │       ├── shipping_policy.html # DEPENDS ON: base_static.html (or base.html)
+│   │       ├── returns.html # DEPENDS ON: base_static.html (or base.html)
+│   │       └── base_static.html # (静态页基础模板) # DEPENDS ON: app.static/css/styles.css (potentially minimal version)
+│   ├── static/           # 静态文件 (CSS, JS, images)
+│   │   ├── css/          # 编译后的 CSS (Compiled CSS)
+│   │   │   └── styles.css # DEPENDS ON: (Source is Tailwind directives in HTML/PY files & tailwind.config.js, compiled by Tailwind CLI)
+│   │   ├── js/           # 前端 JavaScript
+│   │   │   ├── main.js   # 核心交互逻辑 (Core interaction logic) # DEPENDS ON: Browser DOM API, fetch API (to app/api/), utils.js (potentially), Cloudinary JS SDK (potentially)
+│   │   │   ├── gallery.js # 画廊交互 (Gallery interactions) # DEPENDS ON: Browser DOM API, fetch API (to app/api/v1/endpoints/gallery.py)
+│   │   │   ├── checkout.js # Stripe 结账相关 (Stripe checkout related) # DEPENDS ON: Browser DOM API, fetch API (to app/api/v1/endpoints/orders.py), Stripe.js
+│   │   │   └── utils.js  # (通用 JS 函数) # DEPENDS ON: (Pure JavaScript, no external file dependencies usually)
+│   │   ├── img/          # 静态图片 (Logos, placeholders)
+│   │   │   └── loading.gif
+│   │   │   └── frame_placeholders/ # (4个画框占位图)
+│   │   │       ├── frame1.jpg
+│   │   │       ├── frame2.jpg
+│   │   │       ├── frame3.jpg
+│   │   │       └── frame4.jpg
+│   │   └── webfonts/     # (如果本地托管字体 If hosting fonts locally)
+│   ├── admin/            # FastAPI Admin 相关配置 (FastAPI Admin related config)
+│   │   ├── views.py      # Admin 模型视图 (Admin model views) # DEPENDS ON: fastapi_admin, app.db.models.*, starlette.requests
+│   │   ├── auth.py       # (如果需要自定义认证) # DEPENDS ON: fastapi_admin.auth, starlette.requests, app.core.security, app.db.crud.crud_user, app.core.config
+│   │   └── __init__.py   # DEPENDS ON: (Likely exports Admin app instance or registers views, e.g., .views, .auth)
+│   ├── main.py           # FastAPI 应用入口 (FastAPI application entry point) # DEPENDS ON: fastapi, uvicorn (for running), app.api.v1 (router), app.core.config, app.db.session (engine/init_db), app.admin (admin app), starlette.staticfiles, fastapi.templating.Jinja2Templates, app.core.logging_config
+│   └── __init__.py       # DEPENDS ON: (Likely empty, marks 'app' as a package)
+├── tests/                # 测试 (Unit and integration tests) # DEPENDS ON: pytest, httpx (for API tests), specific app modules being tested (e.g., app.services.*, app.api.*), sqlalchemy (for test DB)
+│   ├── api/              # DEPENDS ON: pytest, httpx.AsyncClient, app.main.app, app.schemas.*
+│   │   └── ...
+│   ├── services/         # DEPENDS ON: pytest, app.services.*, app.db.models.* (mocked or test DB), app.schemas.*
+│   │   └── ...
+│   ├── crud/             # DEPENDS ON: pytest, app.db.crud.*, app.db.models.* (mocked or test DB), sqlalchemy
+│   │   └── ...
+│   ├── tasks/            # DEPENDS ON: pytest, app.tasks.*, celery (mocking utilities)
+│   │   └── ...
+│   └── conftest.py       # Pytest 配置 (Pytest configuration) # DEPENDS ON: pytest, sqlalchemy (for test DB fixtures), httpx (for client fixtures), app.main.app, app.core.config, app.db.session
+│   └── __init__.py       # DEPENDS ON: (Likely empty)
+├── .github/              # GitHub 相关文件 (GitHub specific files)
+│   └── workflows/
+│       └── deploy.yml    # GitHub Actions 部署脚本 (Deployment script) # DEPENDS ON: GitHub Actions syntax, Docker, secrets (FLY_API_TOKEN)
+├── .env.example          # 环境变量示例 (Example environment variables) # DEPENDS ON: (No dependencies, it's a template for .env)
+├── .gitignore            # Git 忽略配置 (Git ignore file) # DEPENDS ON: (No dependencies, Git configuration)
+├── Dockerfile            # Docker 构建文件 (Docker build instructions) # DEPENDS ON: Base Python image (e.g., python:3.11-slim), requirements.txt / pyproject.toml (for pip/poetry/pdm install), project files (app/, etc.)
+├── docker-compose.yml    # 本地开发环境编排 (Local development environment) # DEPENDS ON: Docker Compose syntax, Dockerfile (for app service build context), postgres (image), redis (image)
+├── fly.toml              # Fly.io 配置文件 (Fly.io configuration file) # DEPENDS ON: Fly.io deployment specification
+├── pyproject.toml        # 项目元数据与依赖 (e.g., using Poetry or PDM) # DEPENDS ON: Python package names and versions (e.g., fastapi, uvicorn, sqlalchemy, pydantic, celery, etc.)
+├── README.md             # 项目说明与设置指南 (Project description and setup) # DEPENDS ON: (No code dependencies)
+├── requirements.txt      # (如果不用 pyproject.toml) # DEPENDS ON: Python package names and versions
+└── tailwind.config.js    # Tailwind CSS 配置 (Tailwind CSS configuration) # DEPENDS ON: Tailwind CSS (library), JavaScript
+└── postcss.config.js     # PostCSS 配置 (PostCSS config) # DEPENDS ON: PostCSS (library), Tailwind CSS (as a plugin), Autoprefixer (plugin)

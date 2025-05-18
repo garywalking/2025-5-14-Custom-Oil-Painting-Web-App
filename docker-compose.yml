@@ -1,0 +1,88 @@
+# custom_oil_painting_app/docker-compose.yml
+# 本地开发环境编排 (Local development environment)
+# 核心功能摘要: 定义和运行多容器 Docker 应用 (FastAPI App, PostgreSQL, Redis)。
+
+version: '3.8' # 指定 docker-compose 文件格式的版本
+
+services:
+  # FastAPI 应用服务
+  app:
+    # 打印日志: 构建 app 服务
+    # (这个注释是给你的，docker-compose 不会直接打印这个)
+    # build: .  # 指定 Dockerfile 所在的目录 (即当前目录)
+    build:
+      context: . # Dockerfile 的上下文路径
+      dockerfile: Dockerfile # 指定 Dockerfile 文件名
+    # 打印日志: app 服务端口映射
+    ports:
+      - "8000:8000" # 将主机的 8000 端口映射到容器的 8000 端口
+    # 打印日志: app 服务卷挂载
+    volumes:
+      # 将本地的 ./app 目录挂载到容器的 /app/app 目录
+      # 这样在本地修改代码后，容器内的代码也会同步更新，配合 uvicorn --reload 非常方便开发
+      - ./app:/app/app
+    # 打印日志: app 服务环境变量文件
+    env_file:
+      - .env # 从 .env 文件加载环境变量
+    # 打印日志: app 服务依赖关系
+    depends_on:
+      - db # 应用服务依赖于数据库服务
+      - redis # 应用服务依赖于 Redis 服务
+    # restart: always # 根据需要配置重启策略，开发时可以不用
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload # 开发时使用 reload
+
+  # PostgreSQL 数据库服务
+  db:
+    # 打印日志: 拉取 PostgreSQL 镜像
+    image: postgres:15-alpine # 使用官方 PostgreSQL 15 Alpine 镜像 (Alpine 版本更小)
+    # 打印日志: PostgreSQL 服务卷挂载
+    volumes:
+      # 将 PostgreSQL 数据持久化到本地的 postgres_data 卷
+      # 这样即使容器停止或删除，数据也不会丢失
+      - postgres_data:/var/lib/postgresql/data/
+    # 打印日志: PostgreSQL 服务环境变量
+    environment:
+      # 这些环境变量会用于初始化 PostgreSQL 数据库
+      # 请确保这些值与你的 .env 文件中的 DATABASE_URL 配置相匹配
+      # (或者让 DATABASE_URL 直接使用这些值)
+      POSTGRES_USER: ${POSTGRES_USER:-user} # 从 .env 读取或使用默认值 'user'
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password} # 从 .env 读取或使用默认值 'password'
+      POSTGRES_DB: ${POSTGRES_DB:-custom_oil_painting_db} # 从 .env 读取或使用默认值 'custom_oil_painting_db'
+    # 打印日志: PostgreSQL 服务端口映射
+    ports:
+      - "5432:5432" # 将主机的 5432 端口映射到容器的 5432 端口
+    # restart: always # 根据需要配置重启策略
+
+    # Redis 服务 (用于 Celery Broker 和 Backend)
+  redis:
+    # 打印日志: 拉取 Redis 镜像
+    image: redis:7-alpine # 使用官方 Redis 7 Alpine 镜像
+    # 打印日志: Redis 服务端口映射
+    ports:
+      - "6379:6379" # 将主机的 6379 端口映射到容器的 6379 端口
+    # restart: always # 根据需要配置重启策略
+    volumes:
+      - redis_data:/data # 持久化 Redis 数据 (可选, 如果 Redis 仅作缓存或 Broker 且允许重启后数据丢失则可不加)
+
+# Docker 卷定义
+# 用于持久化数据
+volumes:
+  postgres_data: # 定义名为 postgres_data 的卷
+  redis_data:
+    # 定义名为 redis_data 的卷
+
+    # 使用方法:
+    # 1. 确保你已经创建了 .env 文件，并填入了必要的环境变量，例如:
+    #    POSTGRES_USER=myuser
+    #    POSTGRES_PASSWORD=mypassword
+    #    POSTGRES_DB=custom_oil_painting_db
+    #    DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}"
+    #    REDIS_URL="redis://redis:6379/0"
+    #
+    #    注意 DATABASE_URL 中的 host 是 'db' (PostgreSQL 服务的名称)
+    #    注意 REDIS_URL 中的 host 是 'redis' (Redis 服务的名称)
+    #
+    # 2. 在包含 docker-compose.yml 文件的目录下运行:
+    #    docker-compose up --build  (第一次运行时或 Dockerfile 有更改时使用 --build)
+    #    docker-compose up          (后续运行)
+    #    docker-compose down        (停止并移除容器)

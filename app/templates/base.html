@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Custom Oil Painting{% endblock title %} - {{ settings.APP_NAME if settings else "App" }}</title>
+    <link href="{{ url_for('static', path='/css/output.css') }}" rel="stylesheet">
+    {% block head_extra %}{% endblock head_extra %}
+    <script>
+        console.log("LOG: base.html loaded. App Name: {{ settings.APP_NAME if settings else 'N/A' }}");
+    </script>
+</head>
+<body class="bg-gray-100 text-gray-800">
+    <div class="container mx-auto px-4">
+
+        <header class="py-6">
+            {% block navigation %}
+            <nav class="bg-white shadow-md rounded-lg p-4">
+                <div class="container mx-auto flex justify-between items-center">
+                    <a href="{{ url_for('read_root_ui') if 'read_root_ui' in request.url_for.__globals__ else url_for('read_root_api_info') }}" class="text-2xl font-bold text-blue-600 hover:text-blue-800">
+                        {{ settings.APP_NAME if settings else "Oil Painting Customizer" }}
+                    </a>
+                    <ul class="flex space-x-4">
+                        <li><a href="{{ url_for('read_root_ui') if 'read_root_ui' in request.url_for.__globals__ else url_for('read_root_api_info') }}" class="text-gray-600 hover:text-blue-500">Home</a></li>
+                    </ul>
+                </div>
+            </nav>
+            {% endblock navigation %}
+        </header>
+
+        <main class="my-8">
+            {% block content %}
+            <p class="text-center text-gray-500">Default content if not overridden by child template.</p>
+            {% endblock content %}
+        </main>
+
+        <footer class="py-8 text-center text-gray-500 border-t border-gray-300">
+            {% block footer %}
+            <p>&copy; <span id="currentYear"></span> {{ settings.APP_NAME if settings else "Your Company" }}. All rights reserved.</p>
+            <script>
+                document.getElementById("currentYear").textContent = new Date().getFullYear();
+                console.log("LOG: Footer script for current year executed.");
+            </script>
+            {% endblock footer %}
+        </footer>
+    </div>
+    {% block scripts_extra %}{% endblock scripts_extra %}
+</body>
+</html>

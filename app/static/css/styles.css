@@ -1,0 +1,24 @@
+/* app/static/css/styles.css */
+/* Tailwind CSS 指令入口文件 */
+/* 核心功能摘要: 引入 Tailwind CSS 的基础、组件和工具类。 */
+
+/* 引入 Tailwind CSS 的基础样式 */
+@tailwind base;
+/* 引入 Tailwind CSS 的组件类 */
+@tailwind components;
+/* 引入 Tailwind CSS 的工具类 */
+@tailwind utilities;
+
+/* 你可以在这里添加自定义的全局样式或覆盖 Tailwind 的样式 */
+/* 例如:
+body {
+    @apply font-serif; // 示例：全局应用一个 Tailwind 字体类
+}
+
+.custom-button {
+    @apply bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded;
+}
+*/
+
+/* 打印注释到最终的 CSS 文件中（CSS 注释），用于确认此文件被处理 */
+/* LOG: app/static/css/styles.css processed by PostCSS/Tailwind. */

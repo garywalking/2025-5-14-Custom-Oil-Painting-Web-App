@@ -1,0 +1,146 @@
+custom_oil_painting_app/
+├── app/                  # 主要应用源代码 (Main application source code)
+│   ├── api/              # API 路由 (FastAPI APIRouter)
+│   │   ├── v1/           # API 版本控制 (API versioning)
+│   │   │   ├── endpoints/ # 具体功能的路由文件 (Specific endpoint files)
+│   │   │   │   ├── uploads.py       # 图片上传相关 (Image upload related)
+│   │   │   │   ├── ai_processing.py # AI 分析与风格生成触发 (AI analysis & style generation trigger)
+│   │   │   │   ├── pricing.py       # 定价、画框、尺寸计算 (Pricing, frame, size calculation)
+│   │   │   │   ├── shipping.py      # 运费计算 (Shipping calculation)
+│   │   │   │   ├── orders.py        # 订单处理 (Checkout, Webhooks)
+│   │   │   │   ├── quotes.py        # 报价处理 (Send Quote)
+│   │   │   │   ├── magic_link.py    # Magic Link 验证与页面 (Magic Link view)
+│   │   │   │   ├── gallery.py       # 画廊数据接口 (Gallery data API)
+│   │   │   │   └── __init__.py
+│   │   │   └── __init__.py
+│   │   ├── __init__.py
+│   │   └── dependencies.py # 通用 API 依赖项 (Common API dependencies, e.g., get_db)
+│   ├── core/             # 核心逻辑和配置 (Core logic and configuration)
+│   │   ├── config.py     # 应用配置 (Application settings from env vars)
+│   │   ├── logging_config.py # 日志配置
+│   │   ├── security.py   # 安全相关工具 (Security utilities - tokens, etc.)
+│   │   └── external_apis/ # 封装第三方 API 客户端 (Clients for external services)
+│   │       ├── cloudinary_client.py
+│   │       ├── stability_client.py
+│   │       ├── clip_client.py
+│   │       ├── yunexpress_client.py
+│   │       ├── stripe_client.py
+│   │       ├── yotpo_client.py # (可能只是配置或简单调用)
+│   │       ├── resend_client.py
+│   │       └── __init__.py
+│   │   └── __init__.py
+│   ├── db/               # 数据库相关 (Database related code)
+│   │   ├── models/       # ORM 模型 (SQLAlchemy or other ORM models)
+│   │   │   ├── base.py       # Base model class
+│   │   │   ├── order.py
+│   │   │   ├── order_item.py # (可能需要，用于存储具体画作信息)
+│   │   │   ├── quote.py
+│   │   │   ├── user.py       # (管理员用户)
+│   │   │   ├── discount.py   # (如果选择数据库存储折扣码)
+│   │   │   ├── gallery_item.py
+│   │   │   └── __init__.py
+│   │   ├── crud/         # CRUD 操作 (Data access layer)
+│   │   │   ├── base_crud.py # (可选，通用 CRUD 方法)
+│   │   │   ├── crud_order.py
+│   │   │   ├── crud_quote.py
+│   │   │   ├── crud_gallery.py
+│   │   │   ├── crud_discount.py
+│   │   │   └── __init__.py
+│   │   ├── session.py    # 数据库会话管理 (Database session management)
+│   │   └── __init__.py
+│   ├── schemas/          # Pydantic 模型 (API request/response validation)
+│   │   ├── image.py
+│   │   ├── ai_models.py  # (与 AI 交互的数据结构)
+│   │   ├── pricing.py
+│   │   ├── shipping.py
+│   │   ├── order.py
+│   │   ├── quote.py
+│   │   ├── token.py      # (Magic Link Token)
+│   │   ├── discount.py
+│   │   ├── gallery.py
+│   │   └── __init__.py
+│   ├── services/         # 业务逻辑层 (Business logic layer)
+│   │   ├── image_service.py # 图片上传、Cloudinary 签名
+│   │   ├── ai_service.py    # 调用 Stability, CLIP
+│   │   ├── pricing_service.py # 核心定价、尺寸、重量、时间计算
+│   │   ├── shipping_service.py # 运费计算逻辑
+│   │   ├── order_service.py   # 订单创建、支付处理、状态更新
+│   │   ├── quote_service.py   # 报价生成与发送
+│   │   ├── notification_service.py # 邮件发送逻辑 (Resend)
+│   │   ├── magic_link_service.py # Magic Link 生成与验证
+│   │   ├── gallery_service.py  # 画廊逻辑
+│   │   ├── discount_service.py # 折扣码生成与应用
+│   │   └── __init__.py
+│   ├── tasks/            # Celery 异步任务 (Celery tasks)
+│   │   ├── celery_app.py # Celery 应用实例配置
+│   │   ├── image_processing.py # Stability AI, CLIP 处理
+│   │   ├── seo_generation.py  # CLIP 生成 alt/meta 文本
+│   │   ├── notification_tasks.py # 异步发送邮件 (可选)
+│   │   └── __init__.py
+│   ├── templates/        # Jinja2 模板 (Jinja2 templates)
+│   │   ├── base.html     # 基础模板 (Base template)
+│   │   ├── index.html    # 主页 (Main page)
+│   │   ├── order_confirmation.html # Magic Link 订单确认页
+│   │   ├── email/        # 邮件模板 (Email templates)
+│   │   │   ├── order_confirmation_email.html
+│   │   │   ├── quote_email.html
+│   │   │   ├── shipping_update_email.html
+│   │   │   ├── review_invitation_email.html
+│   │   │   └── base_email.html # (邮件基础模板)
+│   │   ├── partials/     # 可复用的模板片段 (Reusable template parts)
+│   │   │   ├── header.html
+│   │   │   ├── footer.html
+│   │   │   ├── pricing_summary.html # (费用汇总部分)
+│   │   │   └── ...
+│   │   └── static_pages/ # 静态内容页面 (Privacy, Terms, etc.)
+│   │       ├── privacy.html
+│   │       ├── terms.html
+│   │       ├── shipping_policy.html
+│   │       ├── returns.html
+│   │       └── base_static.html # (静态页基础模板)
+│   ├── static/           # 静态文件 (CSS, JS, images)
+│   │   ├── css/          # 编译后的 CSS (Compiled CSS)
+│   │   │   └── styles.css
+│   │   ├── js/           # 前端 JavaScript
+│   │   │   ├── main.js   # 核心交互逻辑 (Core interaction logic)
+│   │   │   ├── gallery.js # 画廊交互 (Gallery interactions)
+│   │   │   ├── checkout.js # Stripe 结账相关 (Stripe checkout related)
+│   │   │   └── utils.js  # (通用 JS 函数)
+│   │   ├── img/          # 静态图片 (Logos, placeholders)
+│   │   │   └── loading.gif
+│   │   │   └── frame_placeholders/ # (4个画框占位图)
+│   │   │       ├── frame1.jpg
+│   │   │       ├── frame2.jpg
+│   │   │       ├── frame3.jpg
+│   │   │       └── frame4.jpg
+│   │   └── webfonts/     # (如果本地托管字体 If hosting fonts locally)
+│   ├── admin/            # FastAPI Admin 相关配置 (FastAPI Admin related config)
+│   │   ├── views.py      # Admin 模型视图 (Admin model views)
+│   │   ├── auth.py       # (如果需要自定义认证)
+│   │   └── __init__.py
+│   ├── main.py           # FastAPI 应用入口 (FastAPI application entry point)
+│   └── __init__.py
+├── tests/                # 测试 (Unit and integration tests)
+│   ├── api/
+│   │   └── ...
+│   ├── services/
+│   │   └── ...
+│   ├── crud/
+│   │   └── ...
+│   ├── tasks/
+│   │   └── ...
+│   └── conftest.py       # Pytest 配置 (Pytest configuration)
+│   └── __init__.py
+├── .github/              # GitHub 相关文件 (GitHub specific files)
+│   └── workflows/
+│       └── deploy.yml    # GitHub Actions 部署脚本 (Deployment script)
+├── .env.example          # 环境变量示例 (Example environment variables)
+├── .gitignore            # Git 忽略配置 (Git ignore file)
+├── Dockerfile            # Docker 构建文件 (Docker build instructions)
+├── docker-compose.yml    # 本地开发环境编排 (Local development environment)
+├── fly.toml              # Fly.io 配置文件 (Fly.io configuration file)
+├── pyproject.toml        # 项目元数据与依赖 (e.g., using Poetry or PDM)
+├── README.md             # 项目说明与设置指南 (Project description and setup)
+├── requirements.txt      # (如果不用 pyproject.toml)
+└── tailwind.config.js    # Tailwind CSS 配置 (Tailwind CSS configuration)
+└── postcss.config.js     # PostCSS 配置 (PostCSS config)
