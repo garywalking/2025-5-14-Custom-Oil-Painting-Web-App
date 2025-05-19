@@ -1,1 +1,2 @@
 5.18：dockerfile： Docker 无法从 Docker Hub 下载基础镜像 python:3.11-slim，也试过中科大等国内的，试过FROM python:3.9-slim，3个小时试错，应该是我电脑网络设置问题，放弃。项目后期再测试本地部署，如果不行，就fly.io builder来做。
+5.19：这次是，关闭了window的杀毒和防火墙后，在github手动创立项目，才能正常push项目过去github。事后，将docker,git都加入了防火墙和杀毒豁免。
