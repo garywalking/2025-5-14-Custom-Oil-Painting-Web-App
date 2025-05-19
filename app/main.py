@@ -7,6 +7,7 @@ from fastapi import FastAPI, Request # 导入 FastAPI 类 和 Request 对象 (�
 from fastapi.staticfiles import StaticFiles # 导入 StaticFiles 用于服务静态文件
 from fastapi.templating import Jinja2Templates # 导入 Jinja2Templates 用于模板渲染
 from fastapi.responses import HTMLResponse # 导入 HTMLResponse 用于返回 HTML 内容
+from app.api.v1 import image_upload # 导入图片上传路由
 
 from app.core.config import settings # 导入应用配置
 import os # 导入 os 模块，用于路径操作
@@ -123,6 +124,12 @@ async def read_root_original_json():
     """
     print("LOG: Original API endpoint '/api/info' was accessed.")
     return {"message": "Welcome to the Custom Oil Painting Web App (JSON API Info)!", "version": app.version}
+
+
+# --- 注册路由 ---
+app.include_router(image_upload.router, prefix="/api/v1")
+
+print("LOG: app/main.py - Routes registered successfully.")
 
 
 # --- 应用启动 (用于直接运行此文件) ---

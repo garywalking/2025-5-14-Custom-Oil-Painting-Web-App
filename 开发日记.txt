@@ -1,2 +1,4 @@
-5.18：dockerfile： Docker 无法从 Docker Hub 下载基础镜像 python:3.11-slim，也试过中科大等国内的，试过FROM python:3.9-slim，3个小时试错，应该是我电脑网络设置问题，放弃。项目后期再测试本地部署，如果不行，就fly.io builder来做。
-5.19：这次是，关闭了window的杀毒和防火墙后，在github手动创立项目，才能正常push项目过去github。事后，将docker,git都加入了防火墙和杀毒豁免。
+5月18日：阶段1完成。dockerfile： Docker 无法从 Docker Hub 下载基础镜像 python:3.11-slim，也试过中科大等国内的，试过FROM python:3.9-slim，3个小时试错，应该是我电脑网络设置问题，放弃。项目后期再测试本地部署，如果不行，就fly.io builder来做。
+5月19日：阶段1完成。这次是，关闭了window的杀毒和防火墙后，在github手动创立项目，才能正常push项目过去github。事后，将docker,git都加入了防火墙和杀毒豁免。
+5月19日：阶段2完成。需要先运行搅拌机.\tailwindcss.exe -i ./app/static/css/styles.css -o ./app/static/css/output.css --watch；再另一个终端运行程序uvicorn app.main:app --reload。登录http://localhost:8000/，已经可以上传并显示照片。
+5月19日：AI的总结陈词：阶段2完成。基于FastAPI和Cloudinary实现了图片上传功能，包括文件格式验证（支持.jpg等7种格式）、后端上传API和前端拖放界面；编写了单元测试和集成测试确保功能可靠；使用Tailwind CSS美化界面，需注意开发时要先运行tailwindcss编译器再启动服务器；全部测试通过，已可在本地环境完整运行上传和预览功能。

@@ -5,6 +5,16 @@
         // 打印日志到浏览器控制台，确认 index.html 的 head_extra 加载
         console.log("LOG: index.html - head_extra block processed.");
     </script>
+    <style>
+        .upload-zone {
+            border: 2px dashed #4B5563;
+            transition: all 0.3s ease;
+        }
+        .upload-zone.dragover {
+            border-color: #3B82F6;
+            background-color: rgba(59, 130, 246, 0.1);
+        }
+    </style>
 {% endblock head_extra %}
 
 {% block content %}
@@ -16,10 +26,72 @@
         Transform your favorite photos into beautiful, hand-painted oil masterpieces or high-quality canvas prints.
     </p>
 
-    <div class="text-center">
-        <a href="#" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition duration-300 ease-in-out">
-            Upload Your Photo & Get Started
-        </a>
+    <!-- 图片上传区域 -->
+    <div id="upload-container" class="max-w-2xl mx-auto">
+        <div id="upload-zone" 
+             class="upload-zone rounded-lg p-8 text-center cursor-pointer mb-4">
+            <div class="flex flex-col items-center justify-center space-y-4">
+                <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                          d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                </svg>
+                <div class="text-lg font-medium text-gray-700">
+                    拖放图片到这里或点击上传
+                </div>
+                <p class="text-sm text-gray-500">
+                    支持的格式: JPG, JPEG, PNG, WEBP, BMP, HEIC, HEIF
+                </p>
+            </div>
+            <input type="file" id="file-input" class="hidden" accept=".jpg,.jpeg,.png,.webp,.bmp,.heic,.heif">
+        </div>
+
+        <!-- 上传进度和预览区域 -->
+        <div id="preview-container" class="hidden">
+            <div class="bg-gray-50 rounded-lg p-4">
+                <div class="flex items-center justify-between mb-2">
+                    <span id="file-name" class="text-sm text-gray-700"></span>
+                    <button id="cancel-upload" class="text-red-500 hover:text-red-700">
+                        取消
+                    </button>
+                </div>
+                <div class="relative pt-1">
+                    <div class="flex mb-2 items-center justify-between">
+                        <div>
+                            <span id="progress-text" class="text-xs font-semibold inline-block text-blue-600">
+                                0%
+                            </span>
+                        </div>
+                    </div>
+                    <div class="overflow-hidden h-2 mb-4 text-xs flex rounded bg-blue-200">
+                        <div id="progress-bar" 
+                             class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-500"
+                             style="width: 0%">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 上传结果展示 -->
+        <div id="result-container" class="hidden mt-4">
+            <div class="bg-green-50 border-l-4 border-green-400 p-4">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd"
+                                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                  clip-rule="evenodd"/>
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-green-700">
+                            图片上传成功
+                        </p>
+                    </div>
+                </div>
+                <img id="uploaded-image" class="mt-4 max-w-full h-auto rounded-lg shadow-md" src="" alt="Uploaded image">
+            </div>
+        </div>
     </div>
 
     {% if api_message %}
@@ -41,6 +113,109 @@
 {% block scripts_extra %}
     <script>
         // 打印日志到浏览器控制台，确认 index.html 的 scripts_extra 加载
-        console.log("LOG: index.html - scripts_extra block processed.");
+        console.log("LOG: index.html - scripts_extra block processed。");
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const uploadZone = document.getElementById('upload-zone');
+            const fileInput = document.getElementById('file-input');
+            const previewContainer = document.getElementById('preview-container');
+            const resultContainer = document.getElementById('result-container');
+            const fileName = document.getElementById('file-name');
+            const progressBar = document.getElementById('progress-bar');
+            const progressText = document.getElementById('progress-text');
+            const cancelUpload = document.getElementById('cancel-upload');
+            const uploadedImage = document.getElementById('uploaded-image');
+
+            // 处理拖放事件
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                uploadZone.addEventListener(eventName, preventDefaults, false);
+            });
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                uploadZone.addEventListener(eventName, () => {
+                    uploadZone.classList.add('dragover');
+                });
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                uploadZone.addEventListener(eventName, () => {
+                    uploadZone.classList.remove('dragover');
+                });
+            });
+
+            // 处理文件拖放
+            uploadZone.addEventListener('drop', handleDrop);
+            uploadZone.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', handleFiles);
+
+            function handleDrop(e) {
+                const files = e.dataTransfer.files;
+                handleFiles({ target: { files } });
+            }
+
+            function handleFiles(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    uploadFile(file);
+                }
+            }
+
+            function uploadFile(file) {
+                // 显示预览
+                previewContainer.classList.remove('hidden');
+                fileName.textContent = file.name;
+                resultContainer.classList.add('hidden');
+
+                const formData = new FormData();
+                formData.append('file', file);
+
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', '/api/v1/upload/');
+
+                xhr.upload.onprogress = (e) => {
+                    if (e.lengthComputable) {
+                        const percentComplete = (e.loaded / e.total) * 100;
+                        progressBar.style.width = percentComplete + '%';
+                        progressText.textContent = Math.round(percentComplete) + '%';
+                    }
+                };
+
+                xhr.onload = () => {
+                    if (xhr.status === 200) {
+                        const response = JSON.parse(xhr.response);
+                        if (response.success) {
+                            // 显示上传成功和图片预览
+                            previewContainer.classList.add('hidden');
+                            resultContainer.classList.remove('hidden');
+                            uploadedImage.src = response.data.url;
+                        } else {
+                            alert(response.message || '上传失败，请重试');
+                        }
+                    } else {
+                        alert('上传失败，请重试');
+                    }
+                };
+
+                xhr.onerror = () => {
+                    alert('上传失败，请检查网络连接');
+                };
+
+                // 取消上传
+                cancelUpload.onclick = () => {
+                    xhr.abort();
+                    previewContainer.classList.add('hidden');
+                    progressBar.style.width = '0%';
+                    progressText.textContent = '0%';
+                };
+
+                xhr.send(formData);
+            }
+        });
     </script>
 {% endblock scripts_extra %}
