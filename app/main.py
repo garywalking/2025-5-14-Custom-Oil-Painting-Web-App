@@ -126,6 +126,10 @@ async def read_root_original_json():
     return {"message": "Welcome to the Custom Oil Painting Web App (JSON API Info)!", "version": app.version}
 
 
+# --- API 路由注册 ---
+# 注册图片上传路由
+app.include_router(image_upload.router, prefix="/api/v1", tags=["upload"])
+
 # --- 注册路由 ---
 app.include_router(image_upload.router, prefix="/api/v1")
 

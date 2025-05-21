@@ -1,8 +1,8 @@
 from fastapi import APIRouter, UploadFile, File
-from app.core.external_apis.cloudinary_client import CloudinaryClient
+from app.services.image_service import ImageService
 
 router = APIRouter()
-cloudinary_client = CloudinaryClient()
+image_service = ImageService()
 
 @router.post("/upload/")
 async def upload_image(file: UploadFile = File(...)):
@@ -15,5 +15,5 @@ async def upload_image(file: UploadFile = File(...)):
     Returns:
         包含上传结果的字典
     """
-    result = await cloudinary_client.upload_image(file)
+    result = await image_service.upload_image(file)
     return result

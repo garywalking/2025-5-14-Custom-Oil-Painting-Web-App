@@ -4,17 +4,20 @@ from fastapi import UploadFile
 from typing import List, Dict, Union
 import os
 import mimetypes
+from app.core.config import Settings
 
 # 支持的图片格式
 ALLOWED_FORMATS = {'.jpg', '.jpeg', '.png', '.webp', '.bmp', '.heic', '.heif'}
 
 class CloudinaryClient:
     def __init__(self):
+        # 创建 settings 实例
+        settings = Settings()
         # 初始化 Cloudinary 配置
         cloudinary.config(
-            cloud_name=os.getenv('CLOUDINARY_CLOUD_NAME'),
-            api_key=os.getenv('CLOUDINARY_API_KEY'),
-            api_secret=os.getenv('CLOUDINARY_API_SECRET')
+            cloud_name=settings.CLOUDINARY_CLOUD_NAME,
+            api_key=settings.CLOUDINARY_API_KEY,
+            api_secret=settings.CLOUDINARY_API_SECRET
         )
 
     @staticmethod
