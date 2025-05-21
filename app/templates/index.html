@@ -29,18 +29,14 @@
     <!-- 图片上传区域 -->
     <div id="upload-container" class="max-w-2xl mx-auto">
         <div id="upload-zone" 
-             class="upload-zone rounded-lg p-8 text-center cursor-pointer mb-4">
-            <div class="flex flex-col items-center justify-center space-y-4">
-                <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+             class="upload-zone rounded-lg p-4 text-center cursor-pointer mb-4 max-w-[160px] max-h-[160px] h-[160px] w-[160px] mx-auto flex flex-col items-center justify-center">
+            <div class="flex flex-col items-center justify-center space-y-2">
+                <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="min-width: 24px; min-height: 24px;">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                           d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
                 </svg>
-                <div class="text-lg font-medium text-gray-700">
-                    拖放图片到这里或点击上传
-                </div>
-                <p class="text-sm text-gray-500">
-                    支持的格式: JPG, JPEG, PNG, WEBP, BMP, HEIC, HEIF
-                </p>
+                <div class="text-sm font-medium text-gray-700">点击上传</div>
+                <p class="text-xs text-gray-500">或拖放图片到这里</p>
             </div>
             <input type="file" id="file-input" class="hidden" accept=".jpg,.jpeg,.png,.webp,.bmp,.heic,.heif">
         </div>
@@ -74,10 +70,8 @@
 
         <!-- 上传结果展示 -->
         <div id="result-container" class="hidden mt-4">
-            <div class="bg-green-50 border-l-4 border-green-400 p-4">
-                <div class="flex items-center">
-                    <div class="flex-shrink-0">
-                        <svg class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+            <div class="bg-green-50 border-l-4 border-green-400 p-4">                <div class="flex items-center">
+                    <div class="flex-shrink-0">                        <svg class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
                             <path fill-rule="evenodd"
                                   d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
                                   clip-rule="evenodd"/>
@@ -89,9 +83,36 @@
                         </p>
                     </div>
                 </div>
-                <img id="uploaded-image" class="mt-4 max-w-full h-auto rounded-lg shadow-md" src="" alt="Uploaded image">
+                <img id="uploaded-image" class="mt-4 max-w-[160px] max-h-[160px] w-[160px] h-[160px] mx-auto rounded-lg shadow-md object-contain border border-gray-200" style="width:160px;height:160px;object-fit:contain;" src="" alt="Uploaded image">
+            </div>
+        </div>        <!-- 加载指示器 -->
+        <div id="loading-indicator" class="hidden">
+            <div class="flex items-center justify-center py-4">
+                <svg class="animate-spin h-8 w-8 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span class="ml-2 text-gray-600">正在上传...</span>
             </div>
         </div>
+
+        <!-- 错误消息 -->
+        <div id="error-message" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+        </div>
+
+        <!-- 成功消息 -->
+        <div id="success-message" class="hidden bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
+        </div>
+
+        <!-- 上传表单 -->
+        <form id="upload-form" class="mt-4">
+            <button id="upload-button" 
+                    type="submit" 
+                    disabled 
+                    class="w-full bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed">
+                上传图片
+            </button>
+        </form>
     </div>
 
     {% if api_message %}
@@ -126,6 +147,11 @@
             const progressText = document.getElementById('progress-text');
             const cancelUpload = document.getElementById('cancel-upload');
             const uploadedImage = document.getElementById('uploaded-image');
+            const loadingIndicator = document.getElementById('loading-indicator');
+            const errorMessage = document.getElementById('error-message');
+            const successMessage = document.getElementById('success-message');
+            const uploadButton = document.getElementById('upload-button');
+            const uploadForm = document.getElementById('upload-form');
 
             // 处理拖放事件
             ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
@@ -171,6 +197,10 @@
                 previewContainer.classList.remove('hidden');
                 fileName.textContent = file.name;
                 resultContainer.classList.add('hidden');
+                errorMessage.classList.add('hidden');
+                successMessage.classList.add('hidden');
+                progressBar.style.width = '0%';
+                progressText.textContent = '0%';
 
                 const formData = new FormData();
                 formData.append('file', file);
@@ -187,6 +217,7 @@
                 };
 
                 xhr.onload = () => {
+                    loadingIndicator.classList.add('hidden');
                     if (xhr.status === 200) {
                         const response = JSON.parse(xhr.response);
                         if (response.success) {
@@ -194,28 +225,40 @@
                             previewContainer.classList.add('hidden');
                             resultContainer.classList.remove('hidden');
                             uploadedImage.src = response.data.url;
+                            successMessage.textContent = '图片上传成功！';
+                            successMessage.classList.remove('hidden');
                         } else {
-                            alert(response.message || '上传失败，请重试');
+                            errorMessage.textContent = response.message || '上传失败，请重试';
+                            errorMessage.classList.remove('hidden');
                         }
                     } else {
-                        alert('上传失败，请重试');
+                        errorMessage.textContent = '上传失败，请重试';
+                        errorMessage.classList.remove('hidden');
                     }
                 };
 
                 xhr.onerror = () => {
-                    alert('上传失败，请检查网络连接');
+                    loadingIndicator.classList.add('hidden');
+                    errorMessage.textContent = '上传失败，请检查网络连接';
+                    errorMessage.classList.remove('hidden');
                 };
 
-                // 取消上传
-                cancelUpload.onclick = () => {
-                    xhr.abort();
-                    previewContainer.classList.add('hidden');
-                    progressBar.style.width = '0%';
-                    progressText.textContent = '0%';
-                };
+                loadingIndicator.classList.remove('hidden');
 
                 xhr.send(formData);
             }
+
+            // 表单提交处理
+            uploadForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const file = fileInput.files[0];
+                if (file) {
+                    uploadFile(file);
+                } else {
+                    errorMessage.textContent = '请先选择一个文件进行上传';
+                    errorMessage.classList.remove('hidden');
+                }
+            });
         });
     </script>
 {% endblock scripts_extra %}
